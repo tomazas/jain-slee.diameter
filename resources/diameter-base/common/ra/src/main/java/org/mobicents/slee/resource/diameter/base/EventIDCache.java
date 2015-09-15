@@ -116,7 +116,7 @@ public class EventIDCache {
    * @param eventName
    * @return
    */
-  private FireableEventType getEventId(EventLookupFacility eventLookupFacility, String eventName) {
+  public FireableEventType getEventId(EventLookupFacility eventLookupFacility, String eventName) {
 
     FireableEventType eventType = eventIds.get(eventName);
     if (eventType == null) {
