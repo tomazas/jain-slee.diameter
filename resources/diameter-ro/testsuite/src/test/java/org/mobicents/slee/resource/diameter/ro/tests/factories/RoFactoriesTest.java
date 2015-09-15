@@ -36,6 +36,7 @@ import org.jdiameter.api.Answer;
 import org.jdiameter.api.ApplicationId;
 import org.jdiameter.api.IllegalDiameterStateException;
 import org.jdiameter.api.InternalException;
+import org.jdiameter.api.Message;
 import org.jdiameter.api.OverloadException;
 import org.jdiameter.api.Request;
 import org.jdiameter.api.RouteException;
@@ -362,6 +363,10 @@ public class RoFactoriesTest implements IRoMessageFactory, ServerRoSessionListen
 	public int getDefaultCCFHValue() {
 		// NO-OP
 		return 0;
+	}
+	
+	public void doSendError(ClientRoSession session, Exception error, Message request) throws InternalException, IllegalDiameterStateException, RouteException, OverloadException {
+		
 	}
 
 }
