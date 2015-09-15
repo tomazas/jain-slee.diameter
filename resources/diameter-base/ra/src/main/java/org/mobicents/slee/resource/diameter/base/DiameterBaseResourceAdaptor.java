@@ -687,7 +687,10 @@ public class DiameterBaseResourceAdaptor implements ResourceAdaptor, DiameterLis
    */
   public void fireEvent(String sessionId, Message message) {
     DiameterMessage event = (DiameterMessage) createEvent(message);
-
+    fireEvent(sessionId, event, message);
+  }
+  
+  public void fireEvent(String sessionId, DiameterMessage event, Message message) {
     FireableEventType eventId = eventIdCache.getEventId(eventLookup, message);
 
     this.fireEvent(event, getActivityHandle(sessionId), eventId, null, true, message.isRequest());

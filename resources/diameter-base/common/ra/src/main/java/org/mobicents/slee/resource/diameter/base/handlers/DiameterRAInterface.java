@@ -27,6 +27,7 @@ import net.java.slee.resource.diameter.base.DiameterActivity;
 import org.jdiameter.api.ApplicationId;
 import org.jdiameter.api.Message;
 import org.mobicents.slee.resource.diameter.base.DiameterActivityHandle;
+import net.java.slee.resource.diameter.base.events.DiameterMessage;
 
 /**
  * This should be implemented by RA. 
@@ -43,6 +44,14 @@ public interface DiameterRAInterface {
    * @param message
    */
   public void fireEvent(String sessionId, Message message);
+  
+  /**
+   * Makes RA fire event with certain name and specific event.
+   * 
+   * @param sessionId
+   * @param message
+   */
+  public void fireEvent(String sessionId, DiameterMessage event, String eventName);
 
   /**
    * Terminates activity within SLEE. Does not perform any more tasks

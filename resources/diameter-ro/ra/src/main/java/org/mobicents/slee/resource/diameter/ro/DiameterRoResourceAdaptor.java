@@ -25,10 +25,12 @@ package org.mobicents.slee.resource.diameter.ro;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import javax.management.ObjectName;
 import javax.naming.OperationNotSupportedException;
 import javax.slee.Address;
+import javax.slee.facilities.AlarmLevel;
 import javax.slee.facilities.EventLookupFacility;
 import javax.slee.facilities.Tracer;
 import javax.slee.resource.ActivityFlags;
@@ -71,11 +73,13 @@ import org.jdiameter.api.AvpDataException;
 import org.jdiameter.api.AvpSet;
 import org.jdiameter.api.Message;
 import org.jdiameter.api.Peer;
+import org.jdiameter.api.PeerState;
 import org.jdiameter.api.PeerTable;
 import org.jdiameter.api.Request;
 import org.jdiameter.api.Session;
 import org.jdiameter.api.SessionFactory;
 import org.jdiameter.api.Stack;
+import org.jdiameter.api.app.ConnectionStateListener;
 import org.jdiameter.api.ro.ClientRoSession;
 import org.jdiameter.api.ro.ServerRoSession;
 import org.jdiameter.client.api.ISessionFactory;
@@ -114,7 +118,8 @@ import org.mobicents.slee.resource.diameter.ro.handlers.RoSessionFactory;
  *
  * @author <a href="mailto:brainslog@gmail.com"> Alexandre Mendonca </a>
  */
-public class DiameterRoResourceAdaptor implements ResourceAdaptor, DiameterListener, DiameterRAInterface ,org.mobicents.slee.resource.cluster.FaultTolerantResourceAdaptor<String, DiameterActivity> {
+public class DiameterRoResourceAdaptor implements ResourceAdaptor, DiameterListener, ConnectionStateListener,
+	DiameterRAInterface, org.mobicents.slee.resource.cluster.FaultTolerantResourceAdaptor<String, DiameterActivity>  {
 
   private static final long serialVersionUID = 1L;
 
@@ -343,6 +348,12 @@ public class DiameterRoResourceAdaptor implements ResourceAdaptor, DiameterListe
       // Register CCA App Session Factories
       ((ISessionFactory) sessionFactory).registerAppFacory(ServerRoSession.class, this.ccaSessionFactory);
       ((ISessionFactory) sessionFactory).registerAppFacory(ClientRoSession.class, this.ccaSessionFactory);
+      
+      // ensure that alarms will be raised for unconnected peers (i.e. having current status = REOPEN)
+      List<Peer> peers = stack.unwrap(PeerTable.class).getPeerTable();
+      for(Peer p: peers) {
+    	  stateChanged(p, PeerState.OKAY, p.getState(PeerState.class));
+      }
     }
     catch (Exception e) {
       tracer.severe("Error Activating Diameter Ro RA Entity", e);
@@ -565,7 +576,7 @@ public class DiameterRoResourceAdaptor implements ResourceAdaptor, DiameterListe
 
   public void activityEnded(ActivityHandle handle) {
     if(tracer.isInfoEnabled()) {
-      tracer.info("Diameter Ro RA :: activityEnded :: handle[" + handle + "].");
+      tracer.fine("Diameter Ro RA :: activityEnded :: handle[" + handle + "].");
     }
 
     if(this.activities != null) {
@@ -633,6 +644,12 @@ public class DiameterRoResourceAdaptor implements ResourceAdaptor, DiameterListe
     FireableEventType eventId = eventIdCache.getEventId(eventLookup, message);
 
     this.fireEvent(event, getActivityHandle(sessionId), eventId, null, true, message.isRequest());
+  }
+  
+  public void fireEvent(String sessionId, DiameterMessage event, String eventName) {	
+    FireableEventType eventId = eventIdCache.getEventId(eventLookup, eventName);
+
+    this.fireEvent(event, getActivityHandle(sessionId), eventId, null, true, false);
   }
 
   /**
@@ -738,8 +755,8 @@ public class DiameterRoResourceAdaptor implements ResourceAdaptor, DiameterListe
       // Put it into our activities map
       activities.put(activity.getActivityHandle(), activity);
 
-      if(tracer.isInfoEnabled()) {
-        tracer.info("Activity started [" + activity.getActivityHandle() + "]");
+      if(tracer.isFineEnabled()) {
+        tracer.fine("Activity started [" + activity.getActivityHandle() + "]");
       }
     }
     catch (Exception e) {
@@ -757,9 +774,15 @@ public class DiameterRoResourceAdaptor implements ResourceAdaptor, DiameterListe
    * @throws Exception
    */
   private synchronized void initStack() throws Exception {
+	if(tracer.isInfoEnabled()) {
+	   tracer.info("Diameter Ro RA :: initializing stack.");
+	}
+	  
     // Register in the Mux as an app listener.
     this.diameterMux.registerListener(this, (ApplicationId[]) authApplicationIds.toArray(new ApplicationId[authApplicationIds.size()]));
 
+    this.diameterMux.registerConnectionStateListener(this);
+    
     // Get the stack (should not mess with)
     this.stack = this.diameterMux.getStack();
 
@@ -902,7 +925,7 @@ public class DiameterRoResourceAdaptor implements ResourceAdaptor, DiameterListe
 
   public Answer processRequest(Request request) {
     if(tracer.isInfoEnabled()) {
-      tracer.info("Diameter Ro RA :: Got Request. Command-Code[" + request.getCommandCode() + "]");
+      tracer.fine("Diameter Ro RA :: Got Request. Command-Code[" + request.getCommandCode() + "]");
     }
 
     // Here we receive initial request for which session does not exist!
@@ -1212,5 +1235,16 @@ public class DiameterRoResourceAdaptor implements ResourceAdaptor, DiameterListe
 
     return new DiameterIdentity[0];
   }
-
+  public void stateChanged(Peer peer, PeerState oldState, PeerState newState) {
+	  if (tracer.isFineEnabled()) {
+		  tracer.fine("stateChanged, peer = " + peer.getUri() + ", old state = " + oldState + ", new state = " + newState);
+	  }
+	  
+	  if (newState == PeerState.REOPEN || newState == PeerState.DOWN) { // INITIAL->REOPEN, OKAY->REOPEN, REOPEN->DOWN
+		  String msg = "Connection lost to Diameter peer [" + peer.getUri() + ", "+ peer.getRealmName() + ":" + peer.getVendorId() + "]";
+		  tracer.severe(msg);
+		  
+		  this.raContext.getAlarmFacility().raiseAlarm(this.getClass().getSimpleName() + "-" + (UUID.randomUUID().toString()), "DiameterRo", AlarmLevel.CRITICAL, msg);
+	  }
+  }
 }

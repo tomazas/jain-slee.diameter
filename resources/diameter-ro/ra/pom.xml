@@ -22,6 +22,11 @@
 			<artifactId>mobicents-slee-ra-diameter-cca-common-ra</artifactId>
 			<version>${project.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>${pom.groupId}</groupId>
+			<artifactId>mobicents-slee-ra-diameter-base-common-ra</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 	</dependencies>
 
 </project>

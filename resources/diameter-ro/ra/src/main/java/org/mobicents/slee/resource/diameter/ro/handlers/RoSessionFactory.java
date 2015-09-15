@@ -22,7 +22,10 @@
 
 package org.mobicents.slee.resource.diameter.ro.handlers;
 
+import net.java.slee.resource.diameter.ro.events.RoSendFailure;
+
 import org.jdiameter.api.InternalException;
+import org.jdiameter.api.Message;
 import org.jdiameter.api.SessionFactory;
 import org.jdiameter.api.app.AppAnswerEvent;
 import org.jdiameter.api.app.AppRequestEvent;
@@ -34,6 +37,7 @@ import org.jdiameter.api.ro.ServerRoSession;
 import org.jdiameter.api.ro.events.RoCreditControlAnswer;
 import org.jdiameter.api.ro.events.RoCreditControlRequest;
 import org.jdiameter.common.impl.app.ro.RoSessionFactoryImpl;
+import org.mobicents.slee.resource.diameter.ro.EventIDCache;
 import org.mobicents.slee.resource.diameter.base.handlers.DiameterRAInterface;
 
 /**
@@ -83,5 +87,9 @@ public class RoSessionFactory extends RoSessionFactoryImpl {
   public void doReAuthRequest(ClientRoSession session, ReAuthRequest request) throws InternalException {
     ra.fireEvent(session.getSessionId(), request.getMessage());
   }
-
+  
+  @Override
+  public void doSendError(ClientRoSession session, Exception error, Message request) throws InternalException {
+	ra.fireEvent(session.getSessionId(), new RoSendFailure(request, error), EventIDCache.SEND_FAILURE);
+  }
 }

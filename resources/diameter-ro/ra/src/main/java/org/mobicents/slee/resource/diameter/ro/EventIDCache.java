@@ -75,6 +75,7 @@ public class EventIDCache {
   }
 
   public static final String ERROR_ANSWER                = BASE_PACKAGE_PREFIX + "ErrorAnswer";
+  public static final String SEND_FAILURE                = RO_PACKAGE_PREFIX + "RoSendFailure";
   public static final String EXTENSION_DIAMETER_MESSAGE  = BASE_PACKAGE_PREFIX + "ExtensionDiameterMessage";
 
   private static final String VENDOR  = "java.net";
@@ -122,7 +123,7 @@ public class EventIDCache {
    * @param eventName
    * @return
    */
-  private FireableEventType getEventId(EventLookupFacility eventLookupFacility, String eventName) {
+  public FireableEventType getEventId(EventLookupFacility eventLookupFacility, String eventName) {
 
     FireableEventType eventType = eventIds.get(eventName);
     if (eventType == null) {
